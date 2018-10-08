@@ -1,0 +1,377 @@
+day05
+一、部署MongoDB副本集(功能和redis集群一样)
+副本集也称未Mongodb复制
+------指在多个服务器上存储数据副本,并事先数据同步
+-------提高数据可用性、安全性,方便数据故障恢复
+副本集工作过程
+-------至少需要2个节点
+--------常见搭配:一主一从,一主多从
+--------主节点记录所有操作oplog,从节点定期轮询主节点获取这些操作,然后对自己的数据副本执行这些操作,从而保证数据一致性
+二、管理文档（增删改查）
+_id:"rs1",members:[{_id:0,host:"192.168.4.51:27051"},{_id:1,host:"192.168.4.52:27052"},{_id:2,host:"192.168.4.53:27053"}
+一、部署MongoDB副本集
+vim /etc/mongodb/etc/mondb.conf
+replSet=rs1
+2.1 在所有的mongodb服务启用副本集配置后,运行mongodb服务
+2.2 创建集群
+2.2.1 定义集群主机成员列表
+> config={
+... _id:"rs1",
+...members:[
+...{_id:0,host:"192.168.4.51:27051"},
+...{_id:1,host:"192.168.4.52:27052"},
+...{_id:2,host:"192.168.4.53:27053"}
+... ]
+... }
+结果如下则成功
+{
+	"_id" : "rs1",
+	"members" : [
+		{
+			"_id" : 0,
+			"host" : "192.168.4.51:27051"
+		},
+		{
+			"_id" : 1,
+			"host" : "192.168.4.52:27052"
+		},
+		{
+			"_id" : 2,
+			"host" : "192.168.4.53:27053"
+		}
+	]
+}
+2.2.2 创建集群
+> rs.initiate(config)
+成功如下
+{
+	"ok" : 1,
+	"operationTime" : Timestamp(1538878659, 1),
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1538878659, 1),
+		"signature" : {
+			"hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+			"keyId" : NumberLong(0)
+		}
+	}
+}
+rs1:SECONDARY> 
+
+2.2.3 查看集群信息
+rs.status()                         //查看状态信息
+rs1:PRIMARY> rs.isMaster()          //查看是否是master库
+
+2.2.4 测试集群配置：
+1 从库能否同步主库数据
+从库必须输入下面的指令,否则使用show dbs报错
+rs1:SECONDARY> db.getMongo().setSlaveOk()
+show dbs
+rs1:SECONDARY> rs.isMaster()切换主库验证
+
+2 主库宕机后，从库升级为新的主库
+3 宕机的主库被修复后，自动配置为当前主库的从库 ，并自动同步数据到本机
+从库必须输入下面的指令才能执行查询操作
+rs1:SECONDARY> db.getMongo().setSlaveOk()
+把系统文件 /etc/passwd 内容 导入  到userdb库下的sys集合里
+二、管理文档（增删改查） 192.168.4.50      
+> use  usedb
+> db.sys.find()
+
+插入文档：
+insert({字段名:值，字段名:值})
+save({字段名:值，字段名:值})
+
+insertMany([
+{字段名:值，字段名:值},
+{字段名:值，字段名:值},
+{字段名:值，字段名:值}
+])
+
+查询文档：find()
+
+findOne()
+find({条件})
+find({条件},{显示字段列表})
+find({},{显示字段列表})
+db.t1.findOne({name:"bob"},_id=0)   //显示集合中有字段name:"bob",且不显示字段_id
+
+skip()
+rs1:SECONDARY> db.t1.find().skip(1)    //不显示前1行
+
+limit()
+rs1:SECONDARY> db.t1.find().limit(1)   //显示前1行 
+
+sort()                                 //排序 1升序 -1降序
+rs1:SECONDARY> db.t1.find({name:{$in:["bob","tom"]}},{_id=0,name:1,age:1})
+
+++++++++++++++++++++++++++
+匹配条件：（  查询   删除   修改）
+相等比较        字段名:值
+逻辑与比较     字段名:值，字段名:值
+逻辑或比较     $or  {$or:[{条件},{条件},{条件}]}
+
+在...里          $in     {  字段名:{   $in:[值列表]  }  }
+db.t1.find({name:{$in})
+不在...里          $nin   {  字段名:{$nin:[值列表]}}
+
+正则匹配   字段名:/正则表达式/
+
+数值比较  $gt  $gte   $lt    $lte   $ne
+db.t1.find({age:{$lte:110}},{_id:0})
+db.t1.update({age:{$lte:110}},{name:"jerry"})
+空 null
+++++++++++++++++++++++++++
+更新文档update()
+db.集合名.update({条件},{字段列表})
+db.t1.update({name:"bob"},{$set:{age:55}},false,ture)
+$set  修改指定字段的值
+
+false,true  修改与条件匹配的所有文档
+
+$unset    删除与条件匹配文档的字段
+db.t1.update({name:"bob"},{$unset{age:88}})
+
+$inc  字段值自加或自减
+db.t1.update({name:"bob"},{$unset{age:2}}) //age自加2
+
+$push  给数组类型的字段添加新值，追加在已有值的末尾(可以重复添加)
+db.t1.save({name:"bob",likes:["a","b","c"]})
+db.t1.update({name:"bob"},{$push:{likes:"E"}})
+
+$addToSet   给数组类型的字段添加新值(不允许重复添加)
+
+$pop  删除数组元素(1尾部的,-1头部的)
+
+$pull  删除数组的指定元素
+
+删除文件：remove()
+remove({})
+remove({条件})
+
+
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+]# /usr/local/mongodb/bin/mongo --host  192.168.4.51 
+
+--port 27051
+>
+config = {
+_id:"rs1", 
+members:[
+    {_id:0,host:"192.168.4.51:27051"},
+    {_id:1,host:"192.168.4.52:27052"},
+    {_id:2,host:"192.168.4.53:27053"}
+]
+}
+> rs.initiate(config)
+{
+	"ok" : 1,
+	"operationTime" : Timestamp(1535506617, 1),
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1535506617, 1),
+		"signature" : {
+			"hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+			"keyId" : NumberLong(0)
+		}
+	}
+}
+> rs.isMaster()
+> rs.status()
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+> use  userdb
+> db.t1.save({_id:"ab",name:"bob"})
+> show  tables
+> db.t1.save({_id:"ab",name:"tom"})
+> db.t1.find()
+> db.t1.insert({_id:"ab",name:"jack"})
+> db.t1.insert({_id:"abc",name:"jack"})
+> db.t1.save({_id:"abcd",name:"lucy"})
+> db.t1.find()
+
+++++++++++++++++++++++++++++++++++++++++++
+
+> db.t1.insertMany([
+{name:"jerry",mail:"jerry@163.com"},
+{name:"bob",tel:"88888",qq:"12345678"},
+{name:"lucy",age:19}
+])
+
+> db.t1.find()
+
+++++++++++++++++++++++++++++++++++++++++++++
+> db.sys.find()
+> db.sys.findOne()
+> db.sys.find({shell:"/bin/bash"})
+> db.sys.find({shell:"/bin/bash"},{_id:0,name:0})
+> db.sys.find({},{_id:0,uid:1,name:1})
+> db.sys.find({uid:1},{_id:0})
+> db.sys.find({},{_id:0,name:1,uid:1}).skip(3)
+> db.sys.find({},{_id:0,name:1,uid:1}).limit(3)
+> db.sys.find({},{_id:0,name:1,uid:1}).sort({uid:-1})
++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+> db.sys.find({name:"root"},{_id:0,name:1,uid:1})
+> db.sys.find({name:"root",uid:1},{_id:0,name:1,uid:1})
+
+> db.sys.find({name:{$in:["bob","root","adm","mysql"]}},{_id:0,name:1})
+
+> db.sys.find({uid:{$in:[10,20,30]}},{_id:0,name:1,uid:1})
+
+> db.sys.find({uid:{$in:[0,1,2]}},{_id:0,name:1,uid:1})
+
+> db.sys.find({shell:{$nin:["/bin/bash","/sbin/nologin"]}},{_id:0,name:1,shell:1})
+
+
+> db.sys.find({$or:[{name:"adm"},{uid:11},{shell:"/bin/bash"}]},{_id:0,name:1,shell:1,uid:1})
+
+++++++++++++++++++++++++++++++++++++++++++++++
+> db.sys.find({name:/^a.*t$/},{_id:0,name:1})
+
+> db.sys.find({name:/^a/},{_id:0,name:1})
+
+> db.sys.find({name:/^a/},{_id:0,name:1})
+
+> db.sys.find({name:/^a.*t$/,uid:1},{_id:0,name:1})
+
+> db.sys.find({uid:{$gte:10,$lte:40}},{_id:0,name:1,uid:1})
+
+> db.sys.find({uid:{$gte:10,$lte:40}},{_id:0,name:1,uid:1}).sort({uid:-1})
+
+> db.sys.find({uid:{$gte:10,$lte:40}},{_id:0,name:1,uid:1}).sort({uid:-1}).limit(1)
+
+> db.sys.find({uid:3},{_id:0,name:1,uid:1})
+++++++++++++++++++++++++++++++++++
+> db.sys.find({name:null},{_id:0,name:1,uid:1})
+> db.sys.save({name:null,uid:10})
+> db.sys.find({name:null},{_id:0,name:1,uid:1})
++++++++++++++++++++++++++++++++
+
+> db.sys.find({uid:{$lte:3}},{_id:0,name:1,uid:1,password:1})
+
+> db.sys.find({uid:{$lte:3}},{_id:0})
+
+
+> db.sys.update({ uid:{$lte:3} },{password:"AAA"})
+> db.sys.find({uid:{$lte:3}},{_id:0})
+> db.sys.find({password:"AAA"})
+
+> db.sys.update({uid:{$lte:3}},{$set:{password:"FFF"}})
+> db.sys.find({uid:{$lte:3}},{_id:0})
+
+
+> db.sys.update(
+{uid:{$lte:3}},
+{$set:{password:"123",gid:7}},false,true
+)
+
+> db.sys.find({uid:{$lte:3}},{_id:0})
+++++++++++++++++++++++++++++++++++++++
+
+> db.sys.update({uid:{$lte:3}},{$unset:{gid:7}},false,true)
+> db.sys.find({uid:{$lte:3}},{_id:0})
+
+> db.sys.update({uid:{$lte:3}},{$unset:{gid:7}},false,true)
+> db.sys.find({uid:{$lte:3}},{_id:0})
+
++++++++++++++++++++++++++++++++++++++++++
+> db.sys.update({uid:{$lte:3}},{$inc:{uid:2}},false,true)
+> db.sys.find({uid:{$lte:3}},{_id:0,name:1,uid:1})
+
+> db.sys.update({uid:{$lte:3}},{$inc:{uid:-1}},false,true)
+> db.sys.find({uid:{$lte:3}},{_id:0,name:1,uid:1})
+
+++++++++++++++++++++++++++++++++
+> db.sys.save({name:"lucy", likes:["a","b","c","d"] })
+> db.sys.find({name:"lucy"},{_id:0})
+
+> db.sys.update({name:"lucy"},{ $push:{likes:"e"}})
+> db.sys.update({name:"lucy"},{ $push:{likes:"e"}})
+
+> db.sys.find({name:"lucy"},{_id:0})
+> db.sys.update({name:"lucy"},{ $addToSet:{likes:"b"}})
+> db.sys.update({name:"lucy"},{ $addToSet:{likes:"f"}})
+> db.sys.find({name:"lucy"},{_id:0})
+
+> db.sys.update({name:"lucy"},{$pop:{likes:1}})
+> db.sys.find({name:"lucy"},{_id:0})
+
+> db.sys.update({name:"lucy"},{$pop:{likes:-1}})
+> db.sys.find({name:"lucy"},{_id:0})
+
+> db.sys.update({name:"lucy"},{$pull:{likes:"c"}})
+
+> db.sys.find({name:"lucy"},{_id:0})
+> db.sys.update({name:"lucy"},{$pull:{likes:"e"}})
+
+> db.sys.find({name:"lucy"},{_id:0})
+
+> db.sys.remove({uid:{$lte:3}})
+> db.t1.remove({})
+WriteResult({ "nRemoved" : 6 })
+> 
+> show tables;
+sys
+t1
+> db.t1.find()
+> 
+> db.t1.drop()
+true
+> show tables;
+sys
+++++++++++++++++++++++++++++++++++++++++++++++
+nosql_day01
+搭建redis服务器
+服务的基本使用：启动  停止 客户端访问  存储数据  查看服务状态
+服务的基本配置： 配置文件里常用参数
+LNMP+redis
+
+nosql_day02
+部署redis集群： 
+创建集群  查看集群信息  管理集群（添加/删除主机）
+测试集群：存储数据的工作原理   hash slots   16384
+set  name  bob 
+       name    crc16      数字%16384  余数
+
+get  name
+       name    crc16      数字%16384  余数
+
+nosql_day03
+部署redis 主从同步： 一主一从  一主多从  主从从   哨兵模式
+redis持久化： RDB 和  AOF
+Redis数据类型： string   list   hash表
+
+nosql_day04
+搭建MogoDB服务器
+服务的基本使用：启动  停止 客户端访问  存储数据  查看服务状态
+常用数据类型： 字符 数值  日期  对象  正则  数组 代码 内嵌 布尔 null
+
+nosql_day05
+部署MogoDB服务副本集
+管理文档: find()  update()  remove()  insert() save()
+               匹配条件： find()  update()  remove()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

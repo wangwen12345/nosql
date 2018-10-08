@@ -1,0 +1,1541 @@
+RDBMS   ----- MySQL 
+DBA1_基础
+搭建mysql数据库服务器
+
+建表 ： 数据类型 约束条件  键值
+ 
+管理表记录：insert select  update delete 匹配条件
+多表查询  连接查询 嵌套查询
+
+用户管理：授权  撤销权限
+
+数据备份与恢复： mysqldump   binlog  innobackupex
+
+DBA2_进阶  5天
+MySQL主从同步
+数据读写分离：maxscale+ MySQL 一主一从
+MySQL集群:MHA+ MySQL 一主多从
+MySQL多实例： 一台物理主机运行个数据库服务
+MySQL优化：
+MySQL视图和存储过程
+数据分片 mycat (schema.xml)
++++++++++++++++++++++++++++++++++++++++++++
+NoSQL  5天
+Redis 
+MongoDB
+
+++++++++++++++++++++++++++++++++++++++
+NOSQL_DAY01
+一、部署Redis服务 192.168.4.50
+二、LNMP+Redis    192.168.4.51
+2.1 部署lnmp网站运行平台 192.168.4.51
+
+2.2 配置网站服务器51 把数据存储到本机的redis数据库里。
++++++++++++++++++++++++++++++++++
+NoSQL_DAY02 部署Redis集群
+
+1 准备6台redis服务器，并指定服务使用的ip地址和端口号
+
+2 创建集群
+2.1 部署集群环境
+
+2.2 创建集群
+2.2.1 部署管理主机（51及提供数据存储服务又做管理主机）
+]# cd  redis_cluster
+
+]# yum -y  install ruby  rubygems
+
+]# rpm -ivh --nodeps ruby-devel-2.0.0.648-30.el7.x86_64.rpm  
+
+]# gem install redis-3.2.1.gem
+Successfully installed redis-3.2.1
+Parsing documentation for redis-3.2.1
+Installing ri documentation for redis-3.2.1
+1 gem installed
+[root@node51 redis-cluster]#
+
+把管理集群的ruby脚本拷贝到系统命令目录里
+]# cd /root/redis-4.0.8/src
+]# echo $PATH
+/root/perl5/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/
+
+bin:/root/bin
+[root@node51 src]# mkdir  /root/bin
+]# cp redis-trib.rb /root/bin/
+]# cd
+]# redis-trib.rb help 查看命令的帮助信息
+
+2.2.2 创建集群
+[root@51 ~]# redis-trib.rb create --replicas 1 
+
+192.168.4.51:6351 192.168.4.52:6352 192.168.4.53:6353 
+
+192.168.4.54:6354 192.168.4.55:6355 192.168.4.56:6356
+>>> Creating cluster
+>>> Performing hash slots allocation on 6 nodes...
+Using 3 masters:
+192.168.4.51:6351
+192.168.4.52:6352
+192.168.4.53:6353
+Adding replica 192.168.4.55:6355 to 192.168.4.51:6351
+Adding replica 192.168.4.56:6356 to 192.168.4.52:6352
+Adding replica 192.168.4.54:6354 to 192.168.4.53:6353
+M: b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7 192.168.4.51:6351
+   slots:0-5460 (5461 slots) master
+M: 6dffa3977c0ef6b86d17cdb290c09bfa9e217d18 192.168.4.52:6352
+   slots:5461-10922 (5462 slots) master
+M: ac75574fb8c71791c621fe77d58eeaa85038337c 192.168.4.53:6353
+   slots:10923-16383 (5461 slots) master
+S: dfb7765eff704d821236e375ab8aef2a3119cbb0 192.168.4.54:6354
+   replicates ac75574fb8c71791c621fe77d58eeaa85038337c
+S: 996cb50c73f5e6e5730e03c008c571cf06b0488a 192.168.4.55:6355
+   replicates b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7
+S: ee73bf25df94a2d50cce54c4c08029b5dc44ab44 192.168.4.56:6356
+   replicates 6dffa3977c0ef6b86d17cdb290c09bfa9e217d18
+Can I set the above configuration? (type 'yes' to accept): yes
+>>> Nodes configuration updated
+>>> Assign a different config epoch to each node
+>>> Sending CLUSTER MEET messages to join the cluster
+Waiting for the cluster to join..
+>>> Performing Cluster Check (using node 192.168.4.51:6351)
+M: b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7 192.168.4.51:6351
+   slots:0-5460 (5461 slots) master
+   1 additional replica(s)
+S: ee73bf25df94a2d50cce54c4c08029b5dc44ab44 192.168.4.56:6356
+   slots: (0 slots) slave
+   replicates 6dffa3977c0ef6b86d17cdb290c09bfa9e217d18
+M: ac75574fb8c71791c621fe77d58eeaa85038337c 192.168.4.53:6353
+   slots:10923-16383 (5461 slots) master
+   1 additional replica(s)
+S: dfb7765eff704d821236e375ab8aef2a3119cbb0 192.168.4.54:6354
+   slots: (0 slots) slave
+   replicates ac75574fb8c71791c621fe77d58eeaa85038337c
+S: 996cb50c73f5e6e5730e03c008c571cf06b0488a 192.168.4.55:6355
+   slots: (0 slots) slave
+   replicates b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7
+M: 6dffa3977c0ef6b86d17cdb290c09bfa9e217d18 192.168.4.52:6352
+   slots:5461-10922 (5462 slots) master
+   1 additional replica(s)
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+[root@51 ~]# 
+ 
+[root@51 ~]# redis-cli -h 192.168.4.56 -p 6356
+
+192.168.4.56:6356> cluster nodes
+dfb7765eff704d821236e375ab8aef2a3119cbb0 
+
+192.168.4.54:6354@16354 slave 
+
+ac75574fb8c71791c621fe77d58eeaa85038337c 0 1537931288000 4 
+
+connected
+ee73bf25df94a2d50cce54c4c08029b5dc44ab44 
+
+192.168.4.56:6356@16356 myself,slave 
+
+6dffa3977c0ef6b86d17cdb290c09bfa9e217d18 0 1537931287000 6 
+
+connected
+ac75574fb8c71791c621fe77d58eeaa85038337c 
+
+192.168.4.53:6353@16353 master - 0 1537931286000 3 connected 
+
+10923-16383
+6dffa3977c0ef6b86d17cdb290c09bfa9e217d18 
+
+192.168.4.52:6352@16352 master - 0 1537931287000 2 connected 
+
+5461-10922
+996cb50c73f5e6e5730e03c008c571cf06b0488a 
+
+192.168.4.55:6355@16355 slave 
+
+b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7 0 1537931286000 5 
+
+connected
+b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7 
+
+192.168.4.51:6351@16351 master - 0 1537931288255 1 connected 
+
+0-5460
+192.168.4.56:6356> 
+192.168.4.56:6356> cluster info
+cluster_state:ok
+cluster_slots_assigned:16384
+cluster_slots_ok:16384
+cluster_slots_pfail:0
+cluster_slots_fail:0
+cluster_known_nodes:6
+cluster_size:3
+cluster_current_epoch:6
+cluster_my_epoch:2
+cluster_stats_messages_ping_sent:860
+cluster_stats_messages_pong_sent:911
+cluster_stats_messages_meet_sent:5
+cluster_stats_messages_sent:1776
+cluster_stats_messages_ping_received:911
+cluster_stats_messages_pong_received:865
+cluster_stats_messages_received:1776
+192.168.4.56:6356> 
+
+
+
+
+
+2.3 查看集群信息
+
+3 工作过程
+3.1 存储数据的工作过程
+set  key  values
+
+key 和 crc16  hash运算  得出一个值  把得出值和16384 求模 （求余
+
+数） 余数的值在哪个主库占用的hash slot 范围内 就把变量存储在哪个
+
+主库上
+
+
+
+3.2 查看数据的工作过程
+get  key
+key 和 crc16  hash运算  得出一个值  把得出值和16384 求模 （求余
+
+数） 余数的值在哪个主库占用的hash slot 范围内 就到哪个主库上获取
+
+数据
+
+
+3.3 使用集群存储和查看数据
+[root@host50 ~]# redis-cli  -c -h 192.168.4.53 -p 6353
+192.168.4.53:6353> keys *
+(empty list or set)
+192.168.4.53:6353> 
+
+192.168.4.53:6353> set name bob
+-> Redirected to slot [5798] located at 192.168.4.52:6352
+OK
+192.168.4.52:6352> keys *
+1) "name"
+192.168.4.52:6352> get name
+"bob"
+192.168.4.52:6352> 
+
+192.168.4.52:6352> set sex girl
+-> Redirected to slot [2584] located at 192.168.4.51:6351
+OK
+192.168.4.51:6351> keys *
+1) "sex"
+192.168.4.51:6351> get name
+-> Redirected to slot [5798] located at 192.168.4.52:6352
+"bob"
+192.168.4.52:6352> 
+
+
+4 管理集群
+4.1 向集群里添加新主机
+添加master角色主机：192.168.4.50
+
+运行redis服务并启用集群配置  
+
+把新的redis服务器添加到集群里：
+1 把50主机添加到集群里 
+[root@node51 ~]# redis-trib.rb  add-node  192.168.4.50:6350  
+
+192.168.4.51:6351
+>>> Adding node 192.168.4.50:6350 to cluster 192.168.4.51:6351
+>>> Performing Cluster Check (using node 192.168.4.51:6351)
+。。。。。
+。。。。。
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+>>> Send CLUSTER MEET to node 192.168.4.50:6350 to make it 
+
+join the cluster.
+[OK] New node added correctly.
+[root@node51 ~]# 
+
+[root@51 ~]# redis-trib.rb check 192.168.4.51:6351
+>>> Performing Cluster Check (using node 192.168.4.51:6351)
+M: b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7 192.168.4.51:6351
+   slots:0-5460 (5461 slots) master
+   1 additional replica(s)
+M: ee73bf25df94a2d50cce54c4c08029b5dc44ab44 192.168.4.56:6356
+   slots:5461-10922 (5462 slots) master
+   1 additional replica(s)
+M: ac75574fb8c71791c621fe77d58eeaa85038337c 192.168.4.53:6353
+   slots:10923-16383 (5461 slots) master
+   1 additional replica(s)
+M: 5bb184b608be837e93b875d347204d7b919b2426 192.168.4.50:6350
+   slots: (0 slots) master
+   0 additional replica(s)
+S: dfb7765eff704d821236e375ab8aef2a3119cbb0 192.168.4.54:6354
+   slots: (0 slots) slave
+   replicates ac75574fb8c71791c621fe77d58eeaa85038337c
+S: 996cb50c73f5e6e5730e03c008c571cf06b0488a 192.168.4.55:6355
+   slots: (0 slots) slave
+   replicates b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7
+S: 6dffa3977c0ef6b86d17cdb290c09bfa9e217d18 192.168.4.52:6352
+   slots: (0 slots) slave
+   replicates ee73bf25df94a2d50cce54c4c08029b5dc44ab44
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+[root@51 ~]# 
+
+
+
+2 分配hash slot 槽 给 新主库50主机
+]#redis-trib.rb reshard 192.168.4.51:6351
+
+
+
+
+[root@51 ~]# redis-trib.rb check 192.168.4.51:6351
+>>> Performing Cluster Check (using node 192.168.4.51:6351)
+M: b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7 192.168.4.51:6351
+   slots:1365-5460 (4096 slots) master
+   1 additional replica(s)
+M: ee73bf25df94a2d50cce54c4c08029b5dc44ab44 192.168.4.56:6356
+   slots:6827-10922 (4096 slots) master
+   1 additional replica(s)
+M: ac75574fb8c71791c621fe77d58eeaa85038337c 192.168.4.53:6353
+   slots:12288-16383 (4096 slots) master
+   1 additional replica(s)
+M: 5bb184b608be837e93b875d347204d7b919b2426 192.168.4.50:6350
+   slots:0-1364,5461-6826,10923-12287 (4096 slots) master
+   0 additional replica(s)
+S: dfb7765eff704d821236e375ab8aef2a3119cbb0 192.168.4.54:6354
+   slots: (0 slots) slave
+   replicates ac75574fb8c71791c621fe77d58eeaa85038337c
+S: 996cb50c73f5e6e5730e03c008c571cf06b0488a 192.168.4.55:6355
+   slots: (0 slots) slave
+   replicates b12c37ee0e67e66eb0a2266b64bde8c84cb7abf7
+S: 6dffa3977c0ef6b86d17cdb290c09bfa9e217d18 192.168.4.52:6352
+   slots: (0 slots) slave
+   replicates ee73bf25df94a2d50cce54c4c08029b5dc44ab44
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+[root@51 ~]# 
+
+
+++++++++++++++++++++++++++++++++++
+添加slave角色主机: 192.168.4.57
+1 运行redis服务并启用了集群配置 
+
+2 把57添加到集群里做slave主机
+[root@51 ~]# redis-trib.rb add-node --slave 192.168.4.57:6357 
+
+192.168.4.51:6351
+>>> Adding node 192.168.4.57:6357 to cluster 192.168.4.51:6351
+>>> Performing Cluster Check (using node 192.168.4.51:6351)
+M: 37f94017535249118e6db29e4ca5c7b2606b9fb0 192.168.4.51:6351
+   slots:1365-5460 (4096 slots) master
+   1 additional replica(s)
+S: 2f6635c5e3d46555598c91a0531b9878003aadb0 192.168.4.56:6356
+   slots: (0 slots) slave
+   replicates 52432df7dd736b6bc02ab0fe2d37bc52eb7590c7
+M: 30791f7a13716c236fd9c9952d7c4f0f156b3cd5 192.168.4.54:6354
+   slots:12288-16383 (4096 slots) master
+   1 additional replica(s)
+M: 79a25cdbbd08d851f21c2062b68b66302b494ff6 192.168.4.50:6350
+   slots:0-1364,5461-6826,10923-12287 (4096 slots) master
+   0 additional replica(s)
+S: a0a9b540c2748d475c54c5021b3bb6f9fda1ec6c 192.168.4.53:6353
+   slots: (0 slots) slave
+   replicates 30791f7a13716c236fd9c9952d7c4f0f156b3cd5
+S: 2e61c43c977ac9f3999139c880944bd0cf04e23c 192.168.4.55:6355
+   slots: (0 slots) slave
+   replicates 37f94017535249118e6db29e4ca5c7b2606b9fb0
+M: 52432df7dd736b6bc02ab0fe2d37bc52eb7590c7 192.168.4.52:6352
+   slots:6827-10922 (4096 slots) master
+   1 additional replica(s)
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+Automatically selected master 192.168.4.50:6350
+>>> Send CLUSTER MEET to node 192.168.4.57:6357 to make it 
+
+join the cluster.
+Waiting for the cluster to join....
+>>> Configure node as replica of 192.168.4.50:6350.
+[OK] New node added correctly.
+[root@51 ~]# 
+
+
+[root@51 ~]# redis-trib.rb check 192.168.4.51:6351
+>>> Performing Cluster Check (using node 192.168.4.51:6351)
+M: 37f94017535249118e6db29e4ca5c7b2606b9fb0 192.168.4.51:6351
+   slots:1365-5460 (4096 slots) master
+   1 additional replica(s)
+S: 2f6635c5e3d46555598c91a0531b9878003aadb0 192.168.4.56:6356
+   slots: (0 slots) slave
+   replicates 52432df7dd736b6bc02ab0fe2d37bc52eb7590c7
+M: 30791f7a13716c236fd9c9952d7c4f0f156b3cd5 192.168.4.54:6354
+   slots:12288-16383 (4096 slots) master
+   1 additional replica(s)
+S: d006077b2abcad9fd27005008b75e6b64420adab 192.168.4.57:6357
+   slots: (0 slots) slave
+   replicates 79a25cdbbd08d851f21c2062b68b66302b494ff6
+M: 79a25cdbbd08d851f21c2062b68b66302b494ff6 192.168.4.50:6350
+   slots:0-1364,5461-6826,10923-12287 (4096 slots) master
+   1 additional replica(s)
+S: a0a9b540c2748d475c54c5021b3bb6f9fda1ec6c 192.168.4.53:6353
+   slots: (0 slots) slave
+   replicates 30791f7a13716c236fd9c9952d7c4f0f156b3cd5
+S: 2e61c43c977ac9f3999139c880944bd0cf04e23c 192.168.4.55:6355
+   slots: (0 slots) slave
+   replicates 37f94017535249118e6db29e4ca5c7b2606b9fb0
+M: 52432df7dd736b6bc02ab0fe2d37bc52eb7590c7 192.168.4.52:6352
+   slots:6827-10922 (4096 slots) master
+   1 additional replica(s)
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+[root@51 ~]# 
+
+
++++++++++++++++++++++++++++++++++++++
+4.2 从集群里删除主机
+4.2.1 移除slave角色主机 192.168.4.57
+[root@51 ~]# redis-trib.rb del-node 192.168.4.51:6351 
+
+d006077b2abcad9fd27005008b75e6b64420adab
+>>> Removing node d006077b2abcad9fd27005008b75e6b64420adab 
+
+from cluster 192.168.4.51:6351
+>>> Sending CLUSTER FORGET messages to the cluster...
+>>> SHUTDOWN the node.
+[root@51 ~]#
+ 
+4.2.2 移除master角色主机192.168.4.50
+1 释放占用的hash slot槽
+[root@51 ~]# redis-trib.rb reshard 192.168.4.51:6351
+
+[root@51 ~]# redis-trib.rb check 192.168.4.51:6351
+>>> Performing Cluster Check (using node 192.168.4.51:6351)
+M: 37f94017535249118e6db29e4ca5c7b2606b9fb0 192.168.4.51:6351
+   slots:0-6826,10923-12287 (8192 slots) master
+   1 additional replica(s)
+S: 2f6635c5e3d46555598c91a0531b9878003aadb0 192.168.4.56:6356
+   slots: (0 slots) slave
+   replicates 52432df7dd736b6bc02ab0fe2d37bc52eb7590c7
+M: 30791f7a13716c236fd9c9952d7c4f0f156b3cd5 192.168.4.54:6354
+   slots:12288-16383 (4096 slots) master
+   1 additional replica(s)
+M: 79a25cdbbd08d851f21c2062b68b66302b494ff6 192.168.4.50:6350
+   slots: (0 slots) master
+   0 additional replica(s)
+S: a0a9b540c2748d475c54c5021b3bb6f9fda1ec6c 192.168.4.53:6353
+   slots: (0 slots) slave
+   replicates 30791f7a13716c236fd9c9952d7c4f0f156b3cd5
+S: 2e61c43c977ac9f3999139c880944bd0cf04e23c 192.168.4.55:6355
+   slots: (0 slots) slave
+   replicates 37f94017535249118e6db29e4ca5c7b2606b9fb0
+M: 52432df7dd736b6bc02ab0fe2d37bc52eb7590c7 192.168.4.52:6352
+   slots:6827-10922 (4096 slots) master
+   1 additional replica(s)
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+[root@51 ~]# 
+
+
+2 从集群中删除主机
+
+[root@51 ~]# redis-trib.rb del-node 192.168.4.51:6351 
+
+79a25cdbbd08d851f21c2062b68b66302b494ff6
+>>> Removing node 79a25cdbbd08d851f21c2062b68b66302b494ff6 
+
+from cluster 192.168.4.51:6351
+>>> Sending CLUSTER FORGET messages to the cluster...
+>>> SHUTDOWN the node.
+[root@51 ~]#
+
+[root@51 ~]# redis-trib.rb check 192.168.4.51:6351
+>>> Performing Cluster Check (using node 192.168.4.51:6351)
+M: 37f94017535249118e6db29e4ca5c7b2606b9fb0 192.168.4.51:6351
+   slots:0-6826,10923-12287 (8192 slots) master
+   1 additional replica(s)
+S: 2f6635c5e3d46555598c91a0531b9878003aadb0 192.168.4.56:6356
+   slots: (0 slots) slave
+   replicates 52432df7dd736b6bc02ab0fe2d37bc52eb7590c7
+M: 30791f7a13716c236fd9c9952d7c4f0f156b3cd5 192.168.4.54:6354
+   slots:12288-16383 (4096 slots) master
+   1 additional replica(s)
+S: a0a9b540c2748d475c54c5021b3bb6f9fda1ec6c 192.168.4.53:6353
+   slots: (0 slots) slave
+   replicates 30791f7a13716c236fd9c9952d7c4f0f156b3cd5
+S: 2e61c43c977ac9f3999139c880944bd0cf04e23c 192.168.4.55:6355
+   slots: (0 slots) slave
+   replicates 37f94017535249118e6db29e4ca5c7b2606b9fb0
+M: 52432df7dd736b6bc02ab0fe2d37bc52eb7590c7 192.168.4.52:6352
+   slots:6827-10922 (4096 slots) master
+   1 additional replica(s)
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+[root@51 ~]# 
++++++++++++++++++++++++++++++++++++++++
+把移除的redis服务再添加到集群
+192.168.4.50:6350> CLUSTER RESET
+OK
+192.168.4.50:6350> cluster info
+cluster_state:fail
+cluster_slots_assigned:0
+cluster_slots_ok:0
+cluster_slots_pfail:0
+cluster_slots_fail:0
+cluster_known_nodes:1
+cluster_size:0
+cluster_current_epoch:12
+cluster_my_epoch:9
+cluster_stats_messages_ping_sent:503
+cluster_stats_messages_sent:503
+cluster_stats_messages_pong_received:503
+cluster_stats_messages_received:503
+192.168.4.50:6350> CLUSTER nodes
+5bb184b608be837e93b875d347204d7b919b2426 
+
+192.168.4.50:6350@16350 myself,master - 0 1537953891486 9 
+
+connected
+192.168.4.50:6350> 
+
+
+[root@51 ~]# redis-trib.rb add-node 192.168.4.50:6350 
+
+192.168.4.51:6351
+
+[root@51 ~]# redis-trib.rb check 192.168.4.51:6351
+
+[root@51 ~]# redis-trib.rb check 192.168.4.51:6351
+
+
+什么情况下会导致redis集群无法工作？？？
+
+
+休息到 10:20
+
+
+休息到 15:20
+
+休息到 16:30
+
++++++++++++++++++++++++++++++++++++++++++++++++++++
+nosql_day03
+一、配置Redis主从同步（简单）
+1.1 结构模式: 一主一从   一主多从  主从从
+1.2 工作过程（从库如何把数据同步到本机的）
+1.3 配置redis主从同步
+*默认每台redis服务器都是主库
+
+命令行配置
+命令行配置从库：slaveof  主库ip地址  端口号
+查看本机主从同步状态信息: info  replication
+把从库恢复为主库： slaveof no one
+
+修改配置文件永久配置：
+修改redis服务的主配置文件指定主库信息。
+
+]# vim /etc/redis/6379.conf
+282# slaveof <masterip> <masterport>
+289# masterauth <master-password>
+:wq
+
+]# /etc/init.d/redis_6379  stop
+]# /etc/init.d/redis_6379  start
+
+
+[root@host50 ~]# redis-cli  -h 192.168.4.51 -p 6351
+192.168.4.51:6351> ping
+(error) NOAUTH Authentication required.
+
+
+192.168.4.52:6352> flushall
+(error) READONLY You can't write against a read only slave.
++++++++++++++++++++++++++++++
+redis哨兵模式（难点）
+服务运行时监视主库 当主库宕机后，在对应的从库里选举新的主库。
+
+编写配置文件
+]# vim /etc/sentinel.conf
+sentinel monitor db51 192.168.4.51 6351 1
+sentinel auth-pass db51 123456
+:wq
+
+启动哨兵程序
+]# redis-sentinel  /etc/sentinel.conf 
+
++++++++++++++++++++++++++++++++
+redis持久化 （难点）  192.168.4.50
+方式1  RDB ：Redis  database
+按照指定的时间间隔把内存里的数据集快照写进硬盘。存储数据的文件名默
+
+认叫dump.rdb
+
+使用RDB文件恢复数据的方法:停止服务后把备份的rdb文件拷贝回数据库目
+
+录后 再启动服务即可。
+
+
+
+
+方式2  AOF  Append Only File
+记录在Redis服务器上执行的所有写操作命令的文件（以追加的方式记录）
+
+默认没有启用。
+
+使用AOF文件恢复数据的方法:停止服务后把备份的AOF文件拷贝回数据库目
+
+录后 再启动服务即可。
+
+启用aof ：
+]#vim  /etc/redis/6370.conf
+appendonly   yes
+appendfilename  "appendonly.aof"   :wq
+]# /etc/init.d/redis_6379 stop
+]# /etc/init.d/redis_6379 start
+
+]# cat /var/lib/redis/6379/appendonly.aof
+
+
+修复有问题的aof文件
+[root@host50 6379]# redis-check-aof --fix appendonly.aof 
+0x              b2: Expected prefix '*', got: 'f'
+AOF analyzed: size=239, ok_up_to=178, diff=61
+This will shrink the AOF from 239 bytes, with 61 bytes, to 178 
+
+bytes
+Continue? [y/N]: y
+Successfully truncated AOF
+[root@host50 6379]#
+
+
+++++++++++++++++++++++++++++++++++++++
+Redis数据类型（命令多）
+字符string  set  get
+
+列表list     lpush  变量 值1 值2 .... 设置变量  
+            lrange 变量 0 -1           获取变量所有值
+            lpop 变量                   删除头并显示其值若无则报错
+            rpop 变量                   删除尾并显示其值若无则报错
+            llen 变量                   显示变量值的个数
+            lindex 变量 0              显示变量的第一个值(-1倒数第一个) 
+            lset 变量 0 新值           修改列表中对应编号的值 
+            rpush 变量 值1 值2 ....   在已有的变量添加新的值,默认加在末尾
+
+hash表 hash  一个srting类型的field和value的映射表
+               一个key可以有多个field(字段),一个field对应一个value
+              较与每个字段都存储成string类型更为节省内存
+
+
+集合 set
+有序集合 zset
+
+192.168.4.50:6350> get name
+"jim"
+192.168.4.50:6350> set name tom  nx
+(nil)
+192.168.4.50:6350> get name
+"jim"
+192.168.4.50:6350> set name tom  xx
+OK
+192.168.4.50:6350> get name
+"tom"
+192.168.4.50:6350> ttl name
+(integer) -1
+192.168.4.50:6350> set name2 lucy ex 20
+OK
+192.168.4.50:6350> ttl name2
+(integer) 11
+192.168.4.50:6350> 
+192.168.4.50:6350> set name3 lucy px 20
+OK
+192.168.4.50:6350> ttl name3
+(integer) -2
+192.168.4.50:6350> 
+ 
+
+192.168.4.50:6350> set tel 17611091099
+OK
+192.168.4.50:6350> get tel
+"17611091099"
+192.168.4.50:6350> SETRANGE tel 3 ****
+(integer) 11
+192.168.4.50:6350> get tel
+"176****1099"
+192.168.4.50:6350> set name panglijing
+OK
+192.168.4.50:6350> SETRANGE name 4 **
+(integer) 10
+192.168.4.50:6350> get name
+"pang**jing"
+192.168.4.50:6350> 
+
+192.168.4.50:6350> get name
+"pang**jing"
+192.168.4.50:6350> STRLEN name
+(integer) 10
+192.168.4.50:6350> 
+
+
+192.168.4.50:6350> set name pang
+OK
+192.168.4.50:6350> get name
+"pang"
+192.168.4.50:6350> APPEND name jing
+(integer) 8
+192.168.4.50:6350> get name
+"pangjing"
+192.168.4.50:6350> APPEND xing jing
+(integer) 4
+192.168.4.50:6350> get xing
+"jing"
+192.168.4.50:6350> 
+
+
+192.168.4.50:6350> setbit yaya 1 1
+(integer) 0
+192.168.4.50:6350> setbit yaya 2 0
+(integer) 0
+192.168.4.50:6350> setbit yaya 3 1
+(integer) 0
+192.168.4.50:6350> setbit yaya 4 1
+(integer) 0
+
+192.168.4.50:6350> BITCOUNT yaya
+(integer) 3
+
+192.168.4.50:6350> set x 9
+OK
+192.168.4.50:6350> DECR x
+(integer) 8
+192.168.4.50:6350> DECR x
+(integer) 7
+192.168.4.50:6350> 
+
+192.168.4.50:6350> DECRBY x 2
+(integer) 5
+192.168.4.50:6350> DECRBY x 2
+(integer) 3
+192.168.4.50:6350> 
+
+192.168.4.50:6350> get x name
+(error) ERR wrong number of arguments for 'get' command
+192.168.4.50:6350> 
+192.168.4.50:6350> mget x name
+1) "3"
+2) "pangjing"
+192.168.4.50:6350>
+
+
+192.168.4.50:6350> get name
+"pangjing"
+192.168.4.50:6350> GETRANGE name -2 -1
+"ng"
+192.168.4.50:6350> GETRANGE name 0 2
+"pan"
+192.168.4.50:6350> GETRANGE name 2 3
+"ng"
+192.168.4.50:6350> get name
+"pangjing"
+192.168.4.50:6350>
+
+
+192.168.4.50:6350> get x
+"3"
+192.168.4.50:6350> INCR x
+(integer) 4
+192.168.4.50:6350> INCR x
+(integer) 5
+192.168.4.50:6350> INCRBY x 9
+(integer) 14
+192.168.4.50:6350> INCRBY x 9
+(integer) 23
+192.168.4.50:6350> INCRBY x 0.9
+(error) ERR value is not an integer or out of range
+192.168.4.50:6350> 
+192.168.4.50:6350> INCRBYFLOAT x 0.9
+"23.9"
+192.168.4.50:6350> get x
+"23.9"
+192.168.4.50:6350>
+
+192.168.4.50:6350> set i 99  j 88
+(error) ERR syntax error
+192.168.4.50:6350> 
+192.168.4.50:6350> mset i 99  j 88
+OK
+192.168.4.50:6350> mget i j
+1) "99"
+2) "88"
+192.168.4.50:6350> 
+
+
+192.168.4.50:6350> lpush namegrp tom lucy lili  jack
+(integer) 4
+192.168.4.50:6350> type namegrp
+list
+192.168.4.50:6350> get namegrp
+(error) WRONGTYPE Operation against a key holding the wrong 
+
+kind of value
+192.168.4.50:6350> LRANGE namegrp 0 2
+1) "jack"
+2) "lili"
+3) "lucy"
+192.168.4.50:6350> LRANGE namegrp 0 -1
+1) "jack"
+2) "lili"
+3) "lucy"
+4) "tom"
+192.168.4.50:6350> LRANGE namegrp -1 -2
+(empty list or set)
+192.168.4.50:6350> LRANGE namegrp -2 -1
+1) "lucy"
+2) "tom"
+192.168.4.50:6350> 
+
+192.168.4.50:6350> lpop nemegrp
+(nil)
+
+192.168.4.50:6350> LRANGE namegrp 0 -1
+1) "jack"
+2) "lili"
+3) "lucy"
+4) "tom"
+192.168.4.50:6350> lpop namegrp
+"jack"
+192.168.4.50:6350> LRANGE namegrp 0 -1
+1) "lili"
+2) "lucy"
+3) "tom"
+
+192.168.4.50:6350> llen namegrp
+(integer) 3
+192.168.4.50:6350>
+
+192.168.4.50:6350> LRANGE namegrp 0 -1
+1) "lili"
+2) "lucy"
+3) "tom"
+192.168.4.50:6350> LINDEX namegrp 0
+"lili"
+192.168.4.50:6350> 
+192.168.4.50:6350> LINDEX namegrp 2
+"tom"
+192.168.4.50:6350> LINDEX namegrp -1
+"tom"
+192.168.4.50:6350>
+
+
+192.168.4.50:6350> LRANGE namegrp 0 -1
+1) "lili"
+2) "lucy"
+3) "tom"
+192.168.4.50:6350> LINDEX namegrp 0
+"lili"
+192.168.4.50:6350> lset namegrp 0 jerry
+OK
+192.168.4.50:6350> LINDEX namegrp 0
+"jerry"
+192.168.4.50:6350> 
+
+192.168.4.50:6350> LRANGE namegrp 0 -1
+1) "jerry"
+2) "lucy"
+3) "tom"
+192.168.4.50:6350> rpush namegrp bob lilei yaya
+(integer) 6
+192.168.4.50:6350> 
+192.168.4.50:6350> LRANGE namegrp 0 -1
+1) "jerry"
+2) "lucy"
+3) "tom"
+4) "bob"
+5) "lilei"
+6) "yaya"
+192.168.4.50:6350> 
+
+192.168.4.50:6350> LRANGE namegrp 0 -1
+1) "jerry"
+2) "lucy"
+3) "tom"
+4) "bob"
+5) "lilei"
+6) "yaya"
+192.168.4.50:6350> rpop namegrp
+"yaya"
+192.168.4.50:6350> LRANGE namegrp 0 -1
+1) "jerry"
+2) "lucy"
+3) "tom"
+4) "bob"
+5) "lilei"
+192.168.4.50:6350>
+
+
+hash表 是一个string 类型的field和value的映射表
+        一个key可以对应多个field(列),一个field可以对应多个value
+        较与每个字段都存储成string类型更能节省内存
+        hset 变量 列名 值                   设置hash变量
+        hget 变量 列名                       获取单个字段值
+        hkeys 变量                           获取所有字段
+        hgetall 变量                         获取所有字段及值
+        hmset 变量 列名 值 列名 值 .....   设置多个列
+192.168.4.50:6350> hset book bookname opezd
+(integer) 1
+192.168.4.50:6350> hset book money 80
+(integer) 1
+192.168.4.50:6350> hset book version 2.0
+(integer) 1
+
+192.168.4.50:6350> type book
+hash
+
+192.168.4.50:6350> hget   book school
+(nil)
+192.168.4.50:6350> hget   book money
+"80"
+192.168.4.50:6350> hget   book version
+"2.0"
+192.168.4.50:6350>
+
+192.168.4.50:6350> hmset book fxs rbcbs numbers 10000
+OK
+192.168.4.50:6350>
+
+192.168.4.50:6350> hmget book fxs numbers
+1) "rbcbs"
+2) "10000"
+192.168.4.50:6350>
+
+192.168.4.50:6350> HKEYS book
+1) "author"
+2) "bookname"
+3) "money"
+4) "version"
+5) "fxs"
+6) "numbers"
+
+192.168.4.50:6350> HVALS book
+1) "dingmingy"
+2) "opezd"
+3) "80"
+4) "2.0"
+5) "rbcbs"
+6) "10000"
+192.168.4.50:6350> 
+
+
+192.168.4.50:6350> HGETALL book
+ 1) "author"
+ 2) "dingmingy"
+ 3) "bookname"
+ 4) "opezd"
+ 5) "money"
+ 6) "80"
+ 7) "version"
+ 8) "2.0"
+ 9) "fxs"
+10) "rbcbs"
+11) "numbers"
+12) "10000"
+192.168.4.50:6350>
+
+
+192.168.4.50:6350> hget book bookname
+"opezd"
+192.168.4.50:6350>
+
+192.168.4.50:6350> hdel book namebook
+(integer) 0
+192.168.4.50:6350> hkeys book
+1) "author"
+2) "bookname"
+3) "money"
+4) "version"
+5) "fxs"
+6) "numbers"
+192.168.4.50:6350> hdel book bookname
+(integer) 1
+192.168.4.50:6350> hkeys book
+1) "author"
+2) "money"
+3) "version"
+4) "fxs"
+5) "numbers"
+192.168.4.50:6350> 
+
+redis string  list   hash
+
+del
+set
+get
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++
+nosql_day04 搭建MongoDB服务器
+在主机192.168.4.50上部署MongoDB服务
+
+装包
+]# tar  -zxf  mongodb-linux-x86_64-rhel70-3.6.3.tgz 
+修改配置文件
+mkdir  /etc/mongodb
+cd /etc/mongodb
+cp  -r mongodb-linux-x86_64-rhel70-3.6.3/bin
+
+mkdir  log
+mkdir etc
+mkdir -p data/db
+
+]#vim  etc/mongodb.conf
+logpath=/etc/mongodb/log/mongodb.log   //日志文件目录
+logappend=true                //追加的方式记录日志信息
+dbpath=/etc/mongodb/data/db   //数据库目录
+fork=true                     //守护进程方式运行
+bind_ip=192.168.4.50
+port=27050
+:wq
+启动服务
+[root@host50 bin]# /etc/mongodb/bin/mongod -f  /etc/mongodb/etc/mongodb.conf 
+
+about to fork child process, waiting until server is ready for 
+connections.
+forked process: 12345
+child process started successfully, parent exiting
+[root@host50 bin]# 
+
+查看服务信息
+[root@host50 bin]# netstat -utnlp  | grep :27017
+
+tcp        0      0 127.0.0.1:27017         0.0.0.0:*          
+LISTEN      12345/mongod        
+[root@host50 bin]# 
+[root@host50 bin]# ps -C mongod
+  PID TTY          TIME CMD
+12345 ?        00:00:00 mongod
+[root@host50 bin]# 
+
+
+连接mongodb服务
+[root@host50 bin]# ./mongo
+MongoDB shell version v3.6.3
+connecting to: mongodb://127.0.0.1:27017
+MongoDB server version: 3.6.3
+>
+> exit
+bye
+
+[root@host50 bin]# ./mongod -f /etc/mongodb/etc/mongodb.conf --shutdown
+killing process with pid: 12345
+[root@host50 bin]# 
+
+]# alias mstart='/etc/mongodb/bin/mongod -f /etc/mongodb/etc/mongodb.conf'
+
+]# alias mstop='/etc/mongodb/bin/mongod -f /etc/mongodb/etc/mongodb.conf --shutdown'
+
+]#vim  /etc/bashrc
+alias mstart='/etc/mongodb/bin/mongod -f 
+
+/etc/mongodb/etc/mongodb.conf'
+
+alias mstop='/etc/mongodb/bin/mongod -f 
+
+/etc/mongodb/etc/mongodb.conf --shutdown'
+:wq
+
+
+修改服务使用的ip地址和端口号
+]# mstop
+]#vim /etc/mongodb/etc/mongodb.conf 
+bind_ip=192.168.4.50
+port=27050
+:wq
+]# mstart
+]# netstat  -utnlp  | grep  :27050
+
+连接服务
+]# /etc/mongodb/bin/mongo --host 192.168.4.50 --port 27050
+
+
+在远端主机连接mongodb服务的步骤
+  270  mkdir /root/bin
+  271  cd /root/bin/
+  273  scp 192.168.4.50:/etc/mongodb/bin/mongo ./
+  278  mongo  --host 192.168.4.50  --port 27050
+
+管理mongodb服务的常用命令
+
+> show dbs  //显示当前所有的库
+admin   0.000GB
+config  0.000GB
+local   0.000GB
+> use gamedb   //切换库
+switched to db gamedb
+> 
+
+> db    //显示当前的库
+gamedb
+> show tables //显示当前库下的所有集合
+> show collections
+> 
+> db.t1.save({name:"bob",age:19})
+WriteResult({ "nInserted" : 1 })
+> 
+> db.t1.save({school:"tarena",sex:"girl",pay:20000})
+WriteResult({ "nInserted" : 1 })
+> 
+> show tables;
+t1
+> 
+> db.t1.find()
+{ "_id" : ObjectId("5baef4ff5ecb6fda64588a8d"), "name" : 
+
+"bob", "age" : 19 }
+{ "_id" : ObjectId("5baef5205ecb6fda64588a8e"), "school" : 
+
+"tarena", "sex" : "girl", "pay" : 20000 }
+> 
+> db.t1.remove({})  //删除集合的所有文档
+WriteResult({ "nRemoved" : 2 }) 
+> 
+> 
+> db.t1.find()    //查看集合下的所有文档
+> show tables
+t1
+> db.t1.drop() 删除当前库下的t1集合
+true
+> show tables
+
+
+> db
+gamedb
+> db.dropDatabase()  //删除当前的库
+{ "dropped" : "gamedb", "ok" : 1 }
+> 
+
+> db.dropDatabase()
+{ "ok" : 1 }
+> 
+
+
+> use gamedb
+switched to db gamedb
+> db.t1.save({name:"bob",sex:"girl",age:21,school:"tarena"}) //创建集合
+WriteResult({ "nInserted" : 1 })
+> 
+> db.t1.save
+
+({name:"lucy",mail:"lucy@163.com",pay:28000,homedir:"beijing"}
+
+)
+WriteResult({ "nInserted" : 1 })
+> 
+> show  tables
+t1
+> db.t1.count()
+2
+> db.t1.find()
+{ "_id" : ObjectId("5baf15a85ecb6fda64588a8f"), "name" : 
+
+"bob", "sex" : "girl", "age" : 21, "school" : "tarena" }
+{ "_id" : ObjectId("5baf15e25ecb6fda64588a90"), "name" : 
+
+"lucy", "mail" : "lucy@163.com", "pay" : 28000, "homedir" : 
+
+"beijing" }
+> 
+
+
+
+> db.t1.findOne()
+
+{
+	"_id" : ObjectId("5baf15a85ecb6fda64588a8f"),
+	"name" : "bob",
+	"sex" : "girl",
+	"age" : 21,
+	"school" : "tarena"
+}
+> 
+
+
+> db.t1.find({name:"bob"})
+
+{ "_id" : ObjectId("5baf15a85ecb6fda64588a8f"), "name" : 
+
+"bob", "sex" : "girl", "age" : 21, "school" : "tarena" }
+> 
+> 
+> 
+> db.t1.remove({name:"bob"})
+
+WriteResult({ "nRemoved" : 1 })
+> 
+> db.t1.find()
+
+{ "_id" : ObjectId("5baf15e25ecb6fda64588a90"), "name" : 
+
+"lucy", "mail" : "lucy@163.com", "pay" : 28000, "homedir" : 
+
+"beijing" }
+> 
+
+数据类型
+
+> db.t1.save({name:"bob",card:true,hunyin:false})
+WriteResult({ "nInserted" : 1 })
+
+> db.t1.save({name:"jerry",card:null})
+WriteResult({ "nInserted" : 1 })
+
+
+> db.t1.save({name:"jack",cunkuan:3001})
+WriteResult({ "nInserted" : 1 })
+> 
+> db.t1.save({name:"mack",cunkuan:1808.88})
+WriteResult({ "nInserted" : 1 })
+> 
+
+> db.t1.save({name:"mack",xuefei:NumberInt(20008)})
+WriteResult({ "nInserted" : 1 })
+> 
+> db.t1.save({name:"mack",xuefei:NumberInt(20008.88)})
+WriteResult({ "nInserted" : 1 })
+
+> db.t1.find({name:"mack"})
+{ "_id" : ObjectId("5baf19815ecb6fda64588a95"), "name" : 
+
+"mack", "cunkuan" : 1808.88 }
+{ "_id" : ObjectId("5baf19ec5ecb6fda64588a96"), "name" : 
+
+"mack", "xuefei" : 20008 }
+{ "_id" : ObjectId("5baf19f65ecb6fda64588a97"), "name" : 
+
+"mack", "xuefei" : 20008 }
+> 
+> db.t1.save({name:"lili",pay:NumberLong(20008.88)})
+2018-09-29T14:23:34.723+0800 E QUERY    [thread1] Error: 
+
+number passed to NumberLong must be representable as an 
+
+int64_t :
+@(shell):1:29
+> 
+> 
+> db.t1.save({name:"lili",pay:20008.88})
+WriteResult({ "nInserted" : 1 })
+> 
+
+> db.t1.save({name:"yaya",likes:["book","film","game","eat"]})
+
+WriteResult({ "nInserted" : 1 })
+
+> db.t1.find({name:"yaya"})
+
+{ "_id" : ObjectId("5baf1bb15ecb6fda64588a99"), "name" : 
+
+"yaya", "likes" : [ "book", "film", "game", "eat" ] }
+> 
+
+> db.t1.save({ lname:"php",code:function(){/* <?php echo 
+
+"hello world";?> */}   })
+
+WriteResult({ "nInserted" : 1 })
+> 
+
+> db.t1.find({lname:"php"})
+{ "_id" : ObjectId("5baf1cc05ecb6fda64588a9a"), "lname" : 
+
+"php", "code" : { "code" : "function (){/* <?php echo \"hello 
+
+world\";?> */}" } }
+> 
+
+> db.t1.save({name:"tony",birthday:new Date()})
+WriteResult({ "nInserted" : 1 })
+> 
+> db.t1.find({name:"tony"})
+{ "_id" : ObjectId("5baf1dda5ecb6fda64588a9b"), "name" : 
+
+"tony", "birthday" : ISODate("2018-09-29T06:38:18.686Z") }
+> 
+> db.t1.save({name:"tony2",birthday:"2018-09-29"})
+WriteResult({ "nInserted" : 1 })
+> db.t1.find({name:"tony2"})
+{ "_id" : ObjectId("5baf1e655ecb6fda64588a9c"), "name" : 
+
+"tony2", "birthday" : "2018-09-29" }
+> 
+
+
+> db.t1.save({stu_num:ObjectId(),name:"nbaobao"})
+WriteResult({ "nInserted" : 1 })
+> 
+> db.t1.find({name:"nbaobao"})
+{ "_id" : ObjectId("5baf20215ecb6fda64588a9e"), "stu_num" : 
+
+ObjectId("5baf20215ecb6fda64588a9d"), "name" : "nbaobao" }
+> 
+
+> db.t1.save({comment:"zhengbds",nr:/^..*.$/})
+WriteResult({ "nInserted" : 1 })
+> 
+> db.t1.find({comment:"zhengbds"})
+{ "_id" : ObjectId("5baf21e35ecb6fda64588a9f"), "comment" : 
+
+"zhengbds", "nr" : /^..*.$/ }
+> 
+
+> db.t1.save(
+... {
+... book:{pay:80,worker:"dmy",name:"ywzd",ver:2.0}
+... }
+... )
+WriteResult({ "nInserted" : 1 })
+> 
+
+字符 数值 对象 bool 正则 日期 代码  空  内嵌  数组
+++++++++++++++++++++++++++++++++++++++++++++++
+
+数据导出： 把集合里的文档存储到系统文件里
+数据到的命令格式：
+
+[root@host50 ~]# mkdir /mdb
+
+[root@host50 ~]# /etc/mongodb/bin/mongoexport --host 
+
+192.168.4.50 --port 27050  -d gamedb  -c t1  --type=json > 
+
+/mdb/t1.json
+
+2018-09-29T15:37:03.172+0800	connected to: 
+
+192.168.4.50:27050
+2018-09-29T15:37:03.172+0800	exported 16 records
+
+[root@host50 ~]#  cat  /mdb/t1.json
+
+
+[root@host50 ~]# /etc/mongodb/bin/mongoexport --host 
+
+192.168.4.50 --port 27050  -d gamedb  -c t1 -f _id,name  --
+
+type=csv > /mdb/t1_1.csv
+
+
+[root@host50 ~]# /etc/mongodb/bin/mongoexport --host 
+
+192.168.4.50 --port 27050  -d gamedb  -c t1   --type=csv > 
+
+/mdb/t1_2.csv
+2018-09-29T15:42:05.862+0800	Failed: CSV mode requires a 
+
+field list
+
+
+]# /etc/mongodb/bin/mongoexport --host 192.168.4.50 --port 
+
+27050  -d gamedb  -c t1 -f _id,name  --type=json > 
+
+/mdb/t1_1.json
+
+
+cat  /mdb/t1_1.json
+
+
+数据导入: 把系统文件的内容存储到集合里
+
+数据导入命令格式：
+
+[root@host50 ~]# /etc/mongodb/bin/mongoimport --host 
+
+192.168.4.50 --port 27050 -d  userdb -c c1 --type=josn 
+
+/mdb/t1.json 
+
+2018-09-29T15:57:26.846+0800	connected to: 
+
+192.168.4.50:27050
+2018-09-29T15:57:26.991+0800	imported 16 documents
+[root@host50 ~]# 
+
+
+
+[root@host50 ~]# /etc/mongodb/bin/mongoimport --host 
+
+192.168.4.50 --port 27050 -d  gamedb -c t1 /mdb/t1.json 
+2018-09-29T16:04:15.686+0800	connected to: 
+
+192.168.4.50:27050
+2018-09-29T16:04:15.696+0800	num failures: 16
+2018-09-29T16:04:15.696+0800	error inserting documents: 
+
+multiple errors in bulk operation:
+
+
+]# /etc/mongodb/bin/mongoexport --host 192.168.4.50 --port 
+
+27050 -d gamedb -c  t1 -f name  --type=csv  >  /mdb/t1_3.csv
+
+2018-09-29T16:07:35.651+0800	connected to: 
+
+192.168.4.50:27050
+2018-09-29T16:07:35.651+0800	exported 16 records
+
+[root@host50 ~]# 
+[root@host50 ~]# cat  /mdb/t1_3.csv
+
+
+]# /etc/mongodb/bin/mongoimport --host 192.168.4.50 --port 
+
+27050 -d gamedb -c  t1   --type=csv   /mdb/t1_3.csv
+2018-09-29T16:12:16.913+0800	error validating settings: 
+
+must specify --fields, --fieldFile or --headerline to import 
+
+this file type
+2018-09-29T16:12:16.913+0800	try 'mongoimport --help' for 
+
+more information
+[root@host50 ~]# 
+
+
+]# /etc/mongodb/bin/mongoimport --host 192.168.4.50 --port 
+
+27050 -d gamedb -c  t1 --drop  --headerline  --type=csv   
+
+/mdb/t1_3.csv
+
+
+[root@host50 ~]# /etc/mongodb/bin/mongoimport --host 
+
+192.168.4.50 --port 27050 -d gamedb -c  t1 -f name  --type=csv 
+
+--drop  --headerline   /mdb/t1_3.csv
+2018-09-29T16:43:19.609+0800	error validating settings: 
+
+incompatible options: --fields and --headerline
+2018-09-29T16:43:19.609+0800	try 'mongoimport --help' for 
+
+more information
+[root@host50 ~]# 
+
+[root@host50 ~]# /etc/mongodb/bin/mongoimport --host 
+
+192.168.4.50 --port 27050 -d gamedb -c  t1  --type=csv --drop  
+
+--headerline   /mdb/t1_3.csv
+
+2018-09-29T16:44:13.713+0800	connected to: 
+
+192.168.4.50:27050
+2018-09-29T16:44:13.713+0800	dropping: gamedb.t1
+2018-09-29T16:44:13.835+0800	imported 12 documents
+
+
+
+把系统用户信息/etc/passwd存储到mongodb服务器的userdb库下user集合
+
+里。
+
+> db.user.save
+
+({name:"bob",password:"x",uid:20,gid:20,comment:"the 
+
+student",homedir:"/home/bob",shell:"/bin/bash"})
+
+  107  /etc/mongodb/bin/mongoexport --host 192.168.4.50 --port 
+
+27050 -d userdb -c user -f 
+
+name,password,uid,gid,comment,homedir,shell  --type=csv  >  
+
+/mdb/user.csv
+       cd  /mdb
+  110  vim user.csv
+       cp  /etc/passwd   ./passwd
+  112  sed -i  's/:/,/g' passwd
+   114  sed -i '2r passwd' user.csv 
+  115  /etc/mongodb/bin/mongoimport --host 192.168.4.50 --port 
+
+27050 -d userdb -c user --type=csv --drop  --headerline   
+
+/mdb/user.csv
+
+> use userdb
+> db.user.count()
+> db.user.find()
+++++++++++++++++++++++++++++++++++
+数据备份 格式：
+
+831  mkdir /mbak
+]# /etc/mongodb/bin/mongodump --host 192.168.4.50 --port 27050 
+
+ -o  /mbak
+
+]#[root@host50 mbak]# ls /mbak/
+admin  gamedb  userdb
+
+
+[root@host50 mbak]# ls /mbak/userdb/
+c1.bson  c1.metadata.json  user.bson  user.metadata.json
+
+]# /etc/mongodb/bin/bsondump /mbak/userdb/c1.bson 
+
+
+[root@host50 mbak]# /etc/mongodb/bin/mongodump --host 
+
+192.168.4.50 --port 27050  -d userdb  -c  user  -o  /userdir  
+
+2018-09-29T17:47:37.138+0800	writing userdb.user to 
+2018-09-29T17:47:37.139+0800	done dumping userdb.user (44 
+
+documents)
+
+[root@host50 mbak]# 
+[root@host50 mbak]# ls /userdir/
+userdb
+[root@host50 mbak]# ls /userdir/userdb/
+user.bson  user.metadata.json
+[root@host50 mbak]# 
+
+
+数据恢复
+[root@host50 mbak]# /etc/mongodb/bin/mongorestore --host 
+
+192.168.4.50 --port 27050 -d studb -c stutab  
+
+/userdir/userdb/user.bson
+ 
+2018-09-29T17:57:06.724+0800	checking for collection data 
+
+in /userdir/userdb/user.bson
+2018-09-29T17:57:06.725+0800	reading metadata for 
+
+studb.stutab from /userdir/userdb/user.metadata.json
+2018-09-29T17:57:06.933+0800	restoring studb.stutab from 
+
+/userdir/userdb/user.bson
+2018-09-29T17:57:06.994+0800	no indexes to restore
+2018-09-29T17:57:06.994+0800	finished restoring 
+
+studb.stutab (44 documents)
+2018-09-29T17:57:06.994+0800	done
+[root@host50 mbak]# 
+
